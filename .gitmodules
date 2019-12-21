@@ -1,0 +1,6 @@
+[submodule "json"]
+	path = json
+	url = git@github.com:nlohmann/json.git
+[submodule "eigen"]
+	path = eigen
+	url = git@github.com:libigl/eigen.git
