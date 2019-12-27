@@ -1,4 +1,5 @@
 //
+
 // Created by philipp on 12/16/19.
 //
 
@@ -25,6 +26,8 @@ namespace funnels{
     const std::string& name() const;
     
     [[nodiscard]] virtual std::string declare() const;
+    
+    bool operator==(const named_var_t& other) const;
   
   protected:
     const size_t _id;
@@ -36,7 +39,7 @@ namespace funnels{
   class expression_t{
   public:
     expression_t(const named_var_t &lhs, std::string act,
-        size_t _value=0,
+        long _value=0,
         std::vector<std::pair<std::string, named_var_t&>> rhs=
         std::vector<std::pair<std::string, named_var_t&>>());
     
@@ -50,7 +53,7 @@ namespace funnels{
   protected:
     const named_var_t &_lhs;
     const std::string _act;
-    const size_t _value;
+    const long _value;
     std::vector<std::pair<std::string, named_var_t&>> _rhs;
   };
   
@@ -113,7 +116,10 @@ namespace funnels{
     expr_list_attr_t(std::vector<expression_t> expr);
     
     void add_expr(const expression_t &expr);
-    [[nodiscard]] std::string eval_str(const std::string &id_string) const;
+    void add_expr(const expression_t &&expr);
+    
+    [[nodiscard]] std::string eval_str(const std::string &id_string,
+                                       const std::string &join_string) const;
   
   protected:
     std::vector<expression_t> _expr;
@@ -121,17 +127,18 @@ namespace funnels{
   
   ////////////////////////
   
-  class invariant_t final: public expr_list_attr_t{
+  class invariant_t: public expr_list_attr_t{
   public:
     invariant_t(){};
     invariant_t(std::vector<expression_t> expr):
     expr_list_attr_t(expr){};
     
     std::string eval_str() const{
-      return expr_list_attr_t::eval_str(_id_str);
+      return expr_list_attr_t::eval_str(_id_str, _join_str);
     };
   protected:
     static const std::string _id_str;
+    static const std::string _join_str;
   };
   
   ////////////////////////
@@ -143,10 +150,27 @@ namespace funnels{
         expr_list_attr_t(expr){};
     
     std::string eval_str() const{
-      return expr_list_attr_t::eval_str(_id_str);
+      return expr_list_attr_t::eval_str(_id_str, _join_str);
     };
   protected:
     static const std::string _id_str;
+    static const std::string _join_str;
+  };
+  
+  ////////////////////////
+  
+  class do_t final: public expr_list_attr_t{
+  public:
+    do_t(){};
+    do_t(std::vector<expression_t> expr):
+        expr_list_attr_t(expr){};
+    
+    std::string eval_str() const{
+      return expr_list_attr_t::eval_str(_id_str, _join_str);
+    };
+  protected:
+    static const std::string _id_str;
+    static const std::string _join_str;
   };
   
   ////////////////////////
@@ -169,19 +193,17 @@ namespace funnels{
   
   ////////////////////////
   
-  class location_t final:public named_var_t{
+  class location_t final:public named_var_t, public invariant_t{
   public:
     location_t(size_t id, const std::string &name,
         const process_t & process);
     
     [[nodiscard]] const std::string &proc_name()const;
-    void add_attr(std::shared_ptr<attribute_t> attr_ptr);
-  
+    
     [[nodiscard]] std::string declare() const;
 
   protected:
     const process_t & _process;
-    std::vector<std::shared_ptr<attribute_t>> _attr;
   };
   
   ////////////////////////
@@ -244,16 +266,18 @@ namespace funnels{
     size_t _next_id = 0;
   };
   
+} //funnels
+
+namespace utils_ext{
   ////////////////////////
   
-  extern named_var_map_t<clock_ta_t> clock_map;
-  extern named_var_map_t<location_t> loc_map;
-  extern named_var_map_t<intvar_t> intvar_map;
-  extern named_var_map_t<process_t> process_map;
+  extern funnels::named_var_map_t<funnels::clock_ta_t> clock_map;
+  extern funnels::named_var_map_t<funnels::location_t> loc_map;
+  extern funnels::named_var_map_t<funnels::intvar_t> intvar_map;
+  extern funnels::named_var_map_t<funnels::process_t> process_map;
+  extern funnels::named_var_map_t<funnels::event_t> event_map;
   
-  
-  
-  
-} //funnels
+  ////////////////////////
+}
 
 #endif //FUNNELS_CPP_UTILS_HH

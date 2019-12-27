@@ -4,42 +4,60 @@
 
 #include "funnels/transitions.hh"
 
-transition_t::transition_t(size_t id, size_t src_id, size_t tgt_id,
-    double *guard, double reset) :
-    _id(id), _src_id(src_id), _tgt_id(tgt_id),
-    _reset(reset){
-  set_guard(guard);
-}
-
-transition_t::transition_t(const json &json_data) {
-  from_json(json_data);
-}
-
-void transition_t::set_guard(const double guard[2]) {
-  _guard[0]=guard[0];
-  _guard[1]=guard[1];
-}
-
-void transition_t::set_reset(const double reset){
-  _reset=reset;
-}
-
-json transition_t::to_json() const{
-  json json_data = {
-      {"id",_id},
-      {"src_id", _src_id},
-      {"tgt_id", _tgt_id},
-      {"guard", {_guard[0], _guard[1]}},
-      {"reset", _reset}
-  };
-  return json_data;
-}
-
-void transition_t::from_json(const json &json_data) {
-  _id = (size_t) json_data["id"];
-  _src_id = (size_t) json_data["src_id"];
-  _tgt_id = (size_t) json_data["tgt_id"];
-  _guard[0] = (double) json_data["guard"][0];
-  _guard[1] = (double) json_data["guard"][1];
-  _reset = (double) json_data["reset"];
+namespace funnels{
+  
+  edge_t::edge_t(const location_t &src, const location_t &tgt,
+                 const event_t &event):
+      _src(src), _tgt(tgt), _event(event){};
+  
+  provided_t & edge_t::guard() {
+    return _guard;
+  }
+  
+  do_t & edge_t::update() {
+    return _update;
+  }
+  
+  std::string edge_t::declare(){
+    std::string temp_str = "edge:";
+    temp_str += _src.name() + ":";
+    temp_str += _tgt.name() + ":";
+    temp_str += _event.name() + "{";
+    temp_str += _guard.eval_str();
+    temp_str += _update.eval_str();
+    temp_str.pop_back();
+    temp_str += "}";
+    return temp_str;
+  }
+  
+  edge_t switching_transition(const location_t &src, const location_t &tgt,
+      const event_t &event, const clock_ta_t &ctrl_clk, const clock_ta_t &lcl_clk,
+      size_t alpha, size_t beta, size_t zeta){
+    
+    edge_t this_edge(src, tgt, event);
+    
+    this_edge.guard().add_expr(expression_t(ctrl_clk, ">=", alpha));
+    this_edge.guard().add_expr(expression_t(ctrl_clk, "<=", beta));
+    
+    this_edge.update().add_expr(expression_t(ctrl_clk, "=", zeta));
+    this_edge.update().add_expr(expression_t(lcl_clk, "=", 0));
+    
+    return this_edge;
+  }
+  
+  edge_t converging_transition(const location_t &src, const location_t &tgt,
+                               const event_t &event, const clock_ta_t &lcl_clk,
+                               size_t alpha, bool is_exact){
+  
+    edge_t this_edge(src, tgt, event);
+    if(is_exact){
+      this_edge.guard().add_expr(expression_t(lcl_clk, "==", alpha));
+    }else{
+      this_edge.guard().add_expr(expression_t(lcl_clk, ">=", alpha));
+    }
+    this_edge.update().add_expr(expression_t(lcl_clk, "=", 0));
+  
+    return this_edge;
+  }
+  
 }

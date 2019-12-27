@@ -45,10 +45,14 @@ namespace funnels {
     throw std::runtime_error("Virtual");
   }
   
+  bool named_var_t::operator==(const named_var_t& other) const {
+    return _id == other._id;
+  }
+  
   ////////////////////////
   
   expression_t::expression_t(const funnels::named_var_t &lhs,
-      std::string act, size_t value,
+      std::string act, long value,
       std::vector<std::pair<std::string, named_var_t &>> rhs):
       _lhs(lhs), _act(std::move(act)), _value(value), _rhs(std::move(rhs)){
     assert(check_op__(_act));
@@ -84,15 +88,21 @@ namespace funnels {
     _expr.push_back(expr);
   }
   
-  std::string expr_list_attr_t::eval_str(const std::string & id_string) const {
+  void expr_list_attr_t::add_expr(const expression_t &&expr) {
+    _expr.push_back(expr);
+  }
+  
+  std::string expr_list_attr_t::eval_str(const std::string & id_string,
+      const std::string & join_string) const {
     std::string temp_str="";
     if (_expr.size()) {
       temp_str += id_string;
       for (const auto &v : _expr) {
-        temp_str += v.eval_str() + "&&";
+        temp_str += v.eval_str() + join_string;
       }
-      temp_str.pop_back();
-      temp_str.pop_back();
+      for(size_t i=0; i<join_string.size(); ++i){
+        temp_str.pop_back();
+      }
       temp_str += ":";
     }
     return temp_str;
@@ -100,6 +110,11 @@ namespace funnels {
   
   const std::string invariant_t::_id_str = "invariant:";
   const std::string provided_t::_id_str = "provided:";
+  const std::string do_t::_id_str = "do:";
+  
+  const std::string invariant_t::_join_str = "&&";
+  const std::string provided_t::_join_str = "&&";
+  const std::string do_t::_join_str = ";";
   
   ////////////////////////
   
@@ -141,15 +156,10 @@ namespace funnels {
     return _process.name();
   }
   
-  void location_t::add_attr(std::shared_ptr<attribute_t> attr_ptr) {
-    _attr.push_back(attr_ptr);
-  }
   
   std::string location_t::declare() const{
     std::string temp_string = "location:"+proc_name()+":"+name()+"{";
-    for (const auto & v:_attr){
-      temp_string += v->eval_str();
-    }
+    temp_string += invariant_t::eval_str();
     temp_string.pop_back();
     temp_string += "}";
     return temp_string;
@@ -170,12 +180,17 @@ namespace funnels {
   }
   
   ////////////////////////
-  
-  named_var_map_t<clock_ta_t> clock_map;
-  named_var_map_t<location_t> loc_map;
-  named_var_map_t<intvar_t> intvar_map;
-  named_var_map_t<process_t> process_map;
 
 }
 
-
+namespace utils_ext{
+  ////////////////////////
+  
+  funnels::named_var_map_t<funnels::clock_ta_t> clock_map;
+  funnels::named_var_map_t<funnels::location_t> loc_map;
+  funnels::named_var_map_t<funnels::intvar_t> intvar_map;
+  funnels::named_var_map_t<funnels::process_t> process_map;
+  funnels::named_var_map_t<funnels::event_t> event_map;
+  
+  ////////////////////////
+}
